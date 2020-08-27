@@ -5,6 +5,10 @@ export class ConfigLoader {
     this.env = process.env;
   }
 
+  waitAfterUpdate(): number {
+    return parseInt(this.getValue('WAIT_AFTER_UPDATE', false, '0'), 10);
+  }
+
   githubToken(): string {
     return this.getValue('GITHUB_TOKEN', true);
   }

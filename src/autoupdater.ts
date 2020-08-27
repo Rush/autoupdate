@@ -3,6 +3,12 @@ import * as ghCore from '@actions/core';
 import Octokit from '@octokit/rest';
 import { ConfigLoader } from './config-loader';
 
+const sleep = (timeMs: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, timeMs);
+  });
+};
+
 export class AutoUpdater {
   eventData: any;
   config: ConfigLoader;
@@ -42,6 +48,10 @@ export class AutoUpdater {
       for (const pull of pullsPage.data) {
         ghCore.startGroup(`PR-${pull.number}`);
         const isUpdated = await this.update(pull);
+        if (isUpdated && this.config.waitAfterUpdate()) {
+          sleep(this.config.waitAfterUpdate() * 1000);
+          ghCore.info(`Waiting for ${this.config.waitAfterUpdate} seconds before next update`);
+        }
         ghCore.endGroup();
 
         if (isUpdated) {
@@ -208,12 +218,6 @@ export class AutoUpdater {
   async merge(
     mergeOpts: Octokit.RequestOptions & Octokit.ReposMergeParams,
   ): Promise<boolean> {
-    const sleep = (timeMs: number) => {
-      return new Promise((resolve) => {
-        setTimeout(resolve, timeMs);
-      });
-    };
-
     const doMerge = async () => {
       const mergeResp = await this.octokit.repos.merge(mergeOpts);
 
@@ -241,11 +245,7 @@ export class AutoUpdater {
     while (true) {
       try {
         ghCore.info('Attempting branch update...');
-        const wasMerged = await doMerge();
-        if (wasMerged) {
-          ghCore.info('Waiting 5 minutes for next merge...');
-          await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000));
-        }
+        doMerge();
         break;
       } catch (e) {
         if (
