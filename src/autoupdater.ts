@@ -223,13 +223,13 @@ export class AutoUpdater {
         ghCore.info(
           `Branch update succesful, new branch HEAD: ${mergeResp.data.sha}.`,
         );
+        return true;
       } else if (status === 204) {
         ghCore.info(
           'Branch update not required, branch is already up-to-date.',
         );
+        return false;
       }
-
-      return true;
     };
 
     const retryCount = this.config.retryCount();
@@ -241,7 +241,11 @@ export class AutoUpdater {
     while (true) {
       try {
         ghCore.info('Attempting branch update...');
-        await doMerge();
+        const wasMerged = await doMerge();
+        if (wasMerged) {
+          ghCore.info('Waiting 5 minutes for next merge...');
+          await new Promise(resolve => setTimeout(resolve, 5 * 60 * 1000));
+        }
         break;
       } catch (e) {
         if (
